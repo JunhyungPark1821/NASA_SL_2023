@@ -8,7 +8,7 @@ void setup() {
 }
 
 void loop() {
-  Wire.beginTransmission(8); // transmit to device with address 8
+  Wire.beginTransmission(0x12); // transmit to device with address 8
   Wire.write(tasks.c_str()); // send the string over I2C
   Wire.endTransmission(); // stop transmitting
   delay(1000); // wait for 1 second
