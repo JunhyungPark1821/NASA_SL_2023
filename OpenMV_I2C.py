@@ -2,8 +2,8 @@
 #
 # Please wire up your OpenMV Cam to your Arduino like this:
 #
-# OpenMV Cam Master I2C Data  (P5) - Arduino Uno Data  (A4)
-# OpenMV Cam Master I2C Clock (P4) - Arduino Uno Clock (A5)
+# OpenMV Cam Master I2C Data  (P5) - Teensy SDA (18)
+# OpenMV Cam Master I2C Clock (P4) - Teensy SCL (19)
 # OpenMV Cam Ground                - Arduino Ground
 
 import pyb, ustruct, time

@@ -1,3 +1,7 @@
+// OpenMV Cam Master I2C Data  (P5) - Teensy SDA (18)
+// OpenMV Cam Master I2C Clock (P4) - Teensy SCL (19)
+// OpenMV Cam Ground                - Arduino Ground
+
 #include <Wire.h> 
 
 String tasks = "A1B2C3D4E5F6G7H8";
@@ -8,7 +12,7 @@ void setup() {
 }
 
 void loop() {
-  Wire.beginTransmission(0x12); // transmit to device with address 8
+  Wire.beginTransmission(0x12); // transmit to device with address 12
   Wire.write(tasks.c_str()); // send the string over I2C
   Wire.endTransmission(); // stop transmitting
   delay(1000); // wait for 1 second
