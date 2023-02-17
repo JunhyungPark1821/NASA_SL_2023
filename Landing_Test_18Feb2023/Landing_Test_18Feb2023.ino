@@ -1,37 +1,34 @@
 #include <Wire.h>
 
-//David's IMU library
+//David's IMU library----------------------------------
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <math.h>
 
-#define BNO055_SAMPLERATE_DELAY_MS (1000)
-
-//Altimeter library
+//Altimeter library-------------------------------------
 #include <SparkFunMPL3115A2.h>
 
-//Transmission library
+//Transmission library------------------------------
 #include <SPI.h>
 #include <RH_RF95.h>
 
-//Transmission pinout
+//Altimeter object instance
+MPL3115A2 alt;
+double currAlt;
+double initialAlt;
+
+//Transmission pinout-----------------------
 #define RFM95_CS 0
 #define RFM95_RST 3
 #define RFM95_INT 2
 
-//SD Card configuration
+//SD Card configuration----------------------------------------
 #include <SD.h>
 File myFlightData;
 const int chipSelect = BUILTIN_SDCARD;
 boolean fileNotCreated = true;
 int fileNum = 1;
 
-// Flight duration
-int countData = 0;
-const int dt = 1;                 //EDIT: Time between each sample, in ms
-
-// Initializes type Vector array to store flight data
-Vector* meas_data = new Vector[120000];
 
 //Transreceiver
 // Change to 434.0 or other frequency, must match RX's freq!
@@ -43,6 +40,7 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 char radiopacket[20] = "Landed";
 
 // David' IMU 
+#define BNO055_SAMPLERATE_DELAY_MS (1000)
 Adafruit_BNO055 myIMU = Adafruit_BNO055(1, 0x28);
 bool settled = false;
 bool launched = false;
@@ -96,7 +94,7 @@ void setup() {
   alt.setOversampleRate(7); // Set Oversample to the recommended 128
   alt.enableEventFlags(); // Enable all three pressure and temp event flags 
 
-  double initialAlt = alt.readAltitude() - 2;
+  initialAlt = alt.readAltitude();
 
   //----------------------SD Card initialization-----------------------------------------------------------
   // Initializes SD card reader and csv file
@@ -133,15 +131,7 @@ void setup() {
   delay(1000);
   //int8_t temp=myIMU.getTemp();
   myIMU.setExtCrystalUse(true);
-  startTime=millis();
-
-  //Launch setup -------------------------------------------------------------------------------
-  boolean launchNotStart = true;
-  
-  sensors_event_t accel;
-  sensors_event_t gyro;
-  sensors_event_t mag;
-  sensors_event_t temp;
+  startTime=millis();  
 
   //------------------------Buzzer setup------------------------------------------------------------------------------------------------
   pinMode(6, OUTPUT); // Set buzzer - pin 6 as an output
@@ -149,55 +139,61 @@ void setup() {
   tone(6, 1000); // Send 1KHz sound signal...
   delay(1000);        // ...for 1 sec
   noTone(6);     // Stop sound...
-
-  //----------------------Launch-------------------------------
-  while (launchNotStart) {
-    icm.getEvent(&accel, &gyro, &temp, &mag);
-    if ((accel.acceleration.y - 9.81) > 6) {
-       launchNotStart = false;
-    }
-  }
 }
  
 void loop() {
+  //Altimeter reading
+  currAlt = alt.readAltitude();
+
+  
   //uint8_t system, gyro, accel, mg = 0;
   //myIMU.getCalibration(&system, &gyro, &accel, &mg);
-  imu::Vector<3> acc =myIMU.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+  imu::Vector<3> acc = myIMU.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+  imu::Vector<3> gyro = myIMU.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+  myFlightData.println(String(millis()) + "," + String(acc.x()) + "," + String(acc.y()) + "," + String(acc.z())) + "," + String(gyro.x()) + "," + String(gyro.y()) + "," + String(gyro.z())+","+String(alt.readAltitude());
   double magnitude = sqrt(pow(acc.x(),2) + pow(acc.y(),2) + pow(acc.z(),2));
-  Serial.print("Mag: ");
-  Serial.println(magnitude);
+//  Serial.print("Mag: ");
+//  Serial.println(magnitude);
   if(magnitude >= (g*launchForceMultiplier)){
     launched = true;
-    Serial.println("launched");
+//    Serial.println("launched");
   }
   if(launched){
     if(millis()-startTime >= 5000){
-      Serial.println("5 sec");
+//      Serial.println("5 sec");
       for(int i =0; i<valuesRecorded-1; i++){
         pastAccelerations[i]= pastAccelerations[i+1];
       }
       pastAccelerations[valuesRecorded-1] = magnitude;
-      Serial.print(" 1: ");
-      Serial.print(pastAccelerations[0]);
-      Serial.print(" 2: ");
-      Serial.print(pastAccelerations[1]);
-      Serial.print(" 3: ");
-      Serial.println(pastAccelerations[2]);
+//      Serial.print(" 1: ");
+//      Serial.print(pastAccelerations[0]);
+//      Serial.print(" 2: ");
+//      Serial.print(pastAccelerations[1]);
+//      Serial.print(" 3: ");
+//      Serial.println(pastAccelerations[2]);
       startTime = millis();
     }
     for(int i=0; i<valuesRecorded; i++){   
-      if((pastAccelerations[i] > ((1+margin)*g)) || (pastAccelerations[i] < ((1-margin)*g))) {
+      if(((pastAccelerations[i] > ((1+margin)*g)) || (pastAccelerations[i] < ((1-margin)*g)))&&(currAlt > initialAlt)) {
         settled=false;
         break;
       }
       else{
         settled=true;
+        myFlightData.close();
       }
     }
     if(settled){
-      Serial.print("LANNDDDED, T: +");
-      Serial.println(millis()/1000);
-      exit(0);
+      while(1) {
+        //-----------------------Transmisssion--------------------------------------
+        rf95.send((uint8_t *)radiopacket, 20);
+        rf95.waitPacketSent();
+  
+        //-----------------------Beeping sound----------------------------------------
+        tone(6, 1000); // Send 1KHz sound signal...
+        delay(1000);        // ...for 1 sec
+        noTone(6);     // Stop sound...
+      }   
     }
   }
   delay(BNO055_SAMPLERATE_DELAY_MS);
