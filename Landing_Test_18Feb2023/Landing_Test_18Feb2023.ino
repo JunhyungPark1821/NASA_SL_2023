@@ -43,8 +43,8 @@ float g = 9.81;
 float launchForceMultiplier = 3;
 float margin = 0.05;
 const int valuesRecorded = 5;
-double pastAccelerations[valuesRecorded] = {1,2,3,4,5};
-double pastGyroscopes[valuesRecorded] = {-1.0};
+double pastAccelerations[valuesRecorded];
+double pastGyroscopes[valuesRecorded];
 int accelLandingDelay = 5000;
 unsigned long recordedTime;
 double magnitudeAccel;
@@ -52,7 +52,7 @@ double magnitudeGyro;
 
 
 // Altitude past data
-double pastAltitudes[valuesRecorded] = {-1.0};
+double pastAltitudes[valuesRecorded];
 
 //Statistics
 Statistic accelStat;
@@ -113,6 +113,12 @@ void setup() {
   BNO.setExtCrystalUse(true);
   recordedTime=millis();
 
+  for (int i = 0; i < valuesRecorded; i++) {
+    pastAccelerations[i] = i;
+    pastGyroscopes[i] = i;
+    pastAltitudes[i] = i;
+  }
+
   //------------------------Buzzer setup------------------------------------------------------------------------------------------------
   pinMode(6, OUTPUT); // Set buzzer - pin 6 as an output
   tone(6, 1000); // Send 1KHz sound signal...
@@ -130,7 +136,6 @@ void loop() {
   
   //Disregarding direction of acceleration to find the total magnitude
   magnitudeAccel = sqrt(pow(acc.x(),2) + pow(acc.y(),2) + pow(acc.z(),2));
-  Serial.println(magnitudeAccel);
   magnitudeGyro = sqrt(pow(gyro.x(),2) + pow(gyro.y(),2) + pow(gyro.z(),2));
 
   myFlightData.println(String(millis()) + "," + String(magnitudeAccel) + "," + String(acc.x()) + "," + String(acc.y()) + "," + String(acc.z()) + "," + String(magnitudeGyro) + "," + String(gyro.x()) + "," + String(gyro.y()) + "," + String(gyro.z())+","+String(currAlt));
@@ -149,19 +154,20 @@ void loop() {
       /* Similar to the loop used for the altimeter data: standardize process of recording
        * Each value in array shifted to the left and new value added on to the last index
        */
-      for(int i =0; i<valuesRecorded-1; i++){
+      for(int i=0; i<valuesRecorded; i++){
         pastAccelerations[i] = pastAccelerations[i+1];
         pastGyroscopes[i] = pastGyroscopes[i+1];
       }
+      
       pastAccelerations[valuesRecorded-1] = magnitudeAccel;
-      for(int i =0; i<valuesRecorded-1; i++){
+      
+      for(int i=0; i<valuesRecorded; i++){
         Serial.println(pastAccelerations[i]);
-
       }
 
       pastGyroscopes[valuesRecorded-1] = magnitudeGyro;
 
-      for (int i = 0; i < valuesRecorded-1; i++){
+      for (int i = 0; i < valuesRecorded; i++){
         accelStat.add(pastAccelerations[i]);
         gyroStat.add(pastGyroscopes[i]);
       }
@@ -169,13 +175,10 @@ void loop() {
       accelStd = accelStat.pop_stdev();
       gyroStd = gyroStat.pop_stdev();
 
-      Serial.println(accelStd);
-      Serial.println(gyroStd);
-
       accelStat.clear(true);
       gyroStat.clear(true);
 
-      for(int i =0; i < valuesRecorded-1; i++){
+      for(int i =0; i < valuesRecorded; i++){
         pastAltitudes[i] = pastAltitudes[i+1];
       }
       pastAltitudes[valuesRecorded-1] = currAlt;
@@ -187,8 +190,8 @@ void loop() {
 
 
     // ======================!!!!!!!Launch was fine, landing was wrong, probably change accel to jerk and change altitude range so it doesn't need to be =2!!!!!!!===================================
-      for (int i = 0; i < valuesRecorded-2; i++){
-        if(abs(pastAltitudes[i]-pastAltitudes[i+1]) > 2 && accelStd > 1) {
+      for (int i = 0; i < valuesRecorded-1; i++){
+        if(abs(pastAltitudes[i]-pastAltitudes[i+1]) > 2 && accelStd > 1 && gyroStd > 1) {
           settled=false;
           break;
         }
@@ -203,6 +206,8 @@ void loop() {
   }
   
   if(settled){
+    Serial.println(accelStd);
+    Serial.println(gyroStd);
     while(1) {
       //-----------------------Beeping sound----------------------------------------
       tone(6, 1000); // Send 1KHz sound signal...
