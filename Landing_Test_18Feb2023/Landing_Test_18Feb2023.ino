@@ -41,7 +41,7 @@ float launchForceMultiplier = 3;
 float margin = 0.05;
 const int valuesRecorded = 3;
 double pastAccelerations[valuesRecorded] = {-1.0};
-int accelLandingDelay = 5000
+int accelLandingDelay = 5000;
 unsigned long recordedTime;
 
 
@@ -56,7 +56,7 @@ void setup() {
   //-------------------Initiate the configuration process-------------------------------------------------
   // Initializes altimeter
   alt.begin();
-//  Serial.println("Altimeter started");
+  Serial.println("Altimeter started");
   alt.setModeAltimeter(); // Measure altitude above sea level in meters
   alt.setOversampleRate(7); // Set Oversample to the recommended 128
   alt.enableEventFlags(); // Enable all three pressure and temp event flags
@@ -69,7 +69,7 @@ void setup() {
   //----------------------SD Card initialization-----------------------------------------------------------
   // Initializes SD card reader and csv file
   if(!SD.begin(chipSelect)) {
-//    Serial.println("sd init failed");
+    Serial.println("sd init failed");
     while(1) {
     }
   }
@@ -88,11 +88,11 @@ void setup() {
     fileNum++;
   }
   delay(1000);
-//  Serial.println("Opened flight.csv");
+  Serial.println("Opened flight.csv");
 
   //David's IMU setup ----------------------------------------------------------------------------------------------------------------------
   if (!BNO.begin()) {
-//    Serial.println("Imu did not initiate");
+    Serial.println("Imu did not initiate");
     while (1);
   }
   delay(1000);
@@ -101,7 +101,6 @@ void setup() {
 
   //------------------------Buzzer setup------------------------------------------------------------------------------------------------
   pinMode(6, OUTPUT); // Set buzzer - pin 6 as an output
-
   tone(6, 1000); // Send 1KHz sound signal...
   delay(1000);        // ...for 1 sec
   noTone(6);     // Stop sound...
@@ -117,7 +116,7 @@ void loop() {
   
   //Disregarding direction of acceleration to find the total magnitude
   double magnitudeAccel = sqrt(pow(acc.x(),2) + pow(acc.y(),2) + pow(acc.z(),2));
-
+  Serial.println(magnitudeAccel);
   /* To keep the data in sequencial order and to standardize a process of recording
    * Each value in the array will be shifted to the left and the new value added on to the last index
    */
@@ -154,7 +153,7 @@ void loop() {
     // ======================!!!!!!!Launch was fine, landing was wrong, probably change accel to jerk and change altitude range so it doesn't need to be =2!!!!!!!===================================
     for(int i=0; i<valuesRecorded; i++){   
       if((pastAccelerations[i] > ((1+margin)*g)) || (pastAccelerations[i] < ((1-margin)*g))) {
-        if (((pastAltitudes[2]-pastAltitudes[0])>2) || ((pastAltitudes[2]-pastAltitudes[0])<2)) {
+        if ((pastAltitudes[2]-pastAltitudes[0])>2)) {
           settled=false;
           break;
         }
