@@ -21,6 +21,7 @@ File myFlightData;
 const int chipSelect = BUILTIN_SDCARD;
 boolean fileNotCreated = true;
 int fileNum = 1;
+String fileName;
 
 // David' IMU-------------------------------------------------------
 /* The #define: Millisecond delay before getting data, aka how fast void loop() runs
@@ -52,6 +53,7 @@ double magnitudeGyro;
 int accelMargin = 1;
 int gyroMargin = 1;
 int altMargin = 2;
+unsigned long launchTime;
 
 //Statistics
 Statistic accelStat;
@@ -83,7 +85,7 @@ void setup() {
   }
 
   while (fileNotCreated) {
-    String fileName = "flight"+String(fileNum)+".csv";
+    fileName = "flight"+String(fileNum)+".csv";
     byte buffer[fileName.length() + 1];
     fileName.toCharArray(buffer, fileName.length()+1);
     
@@ -98,6 +100,7 @@ void setup() {
   delay(1000);
 //  Serial.println("Opened flight.csv");
   myFlightData.println("Time(ms),Magnitude of Accel,Accel(X)(m/s^2),Accel(Y)(m/s^2),Accel(Z)(m/s^2),Magnitude of Gyro,Gyro(X)(rad/s),Gyro(Y)(rad/s),Gyro(Z)(rad/s),Altitude(m)\n");
+  myFlightData.close();
 
   //David's IMU setup ----------------------------------------------------------------------------------------------------------------------
   if (!BNO.begin()) {
@@ -133,6 +136,11 @@ void loop() {
   magnitudeAccel = sqrt(pow(acc.x(),2) + pow(acc.y(),2) + pow(acc.z(),2));
   magnitudeGyro = sqrt(pow(gyro.x(),2) + pow(gyro.y(),2) + pow(gyro.z(),2));
 
+  //SD Card Open Setup
+  byte buffer[fileName.length() + 1];
+  fileName.toCharArray(buffer, fileName.length()+1);
+  myFlightData = SD.open(buffer,FILE_WRITE);
+  
   // print frewquency relative to void loop delay
   myFlightData.println(String(millis()) + "," + String(magnitudeAccel) + "," + String(acc.x()) + "," + String(acc.y()) + "," + String(acc.z()) + "," + String(magnitudeGyro) + "," + String(gyro.x()) + "," + String(gyro.y()) + "," + String(gyro.z())+","+String(currAlt));
 
@@ -142,6 +150,7 @@ void loop() {
   // Reducing false positives by creating redundency by comparing the acceleration at any instant and the change in altitude s
   if (((magnitudeAccel >= (g*launchForceMultiplier)) || ((pastAltitudes[valuesRecorded-1]-pastAltitudes[0]) > 25)) && !launched) {
     myFlightData.println("Launched");
+    launchTime = millis();
     launched = true;
   }
 
@@ -182,7 +191,7 @@ void loop() {
     // To test whether we have actually settled on the ground we run through all the recorded data
     // Nested if statement logic same as &&
       for (int i = 0; i < valuesRecorded-1; i++){
-        if(abs(pastAltitudes[i]-pastAltitudes[i+1]) > altMargin || accelStd > accelMargin || gyroStd > gyroMargin) {
+        if(abs(pastAltitudes[i]-pastAltitudes[i+1]) > altMargin || accelStd > accelMargin || gyroStd > gyroMargin || millis()-launchTime < 600000) {
           settled=false;
           break;
         }
@@ -196,7 +205,6 @@ void loop() {
       }
     }
   }
-  
   if(settled){
     while(1) {
       //-----------------------Beeping sound----------------------------------------
@@ -205,5 +213,6 @@ void loop() {
       noTone(6);     // Stop sound...
     }   
   }
+  myFlightData.close();
   delay(BNO055_SAMPLERATE_DELAY_MS);
 }
