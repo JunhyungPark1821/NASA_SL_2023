@@ -12,10 +12,6 @@ int charIndex = 0;
 
 void setup() {
   Wire.begin(SLAVE_ADDRESS);        // join i2c bus (address optional for master)
-  while(Wire.available()) {
-    Wire.write(1);
-    delay(1000);
-  }
   Serial.begin(9600);  // start serial for output
 }
 

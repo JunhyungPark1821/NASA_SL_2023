@@ -62,6 +62,16 @@ double accelStd;
 double gyroStd;
 
 
+//Establish RBPI i2c communication---------------------------------------------------------------------------------------------------
+boolean sentToRbpi = false;
+boolean receivedFromRbpi = false;
+char tasks[100];
+int tasksIndex = 0;
+
+//Establish camera i2c communication------------------------------------------------------------
+boolean sentSegment = false;
+int segmentIndex = 0;
+
 void setup() {
   Serial.begin(115200);
 
@@ -201,6 +211,7 @@ void loop() {
           myFlightData.println("Accel Std," + String(accelStd));
           myFlightData.println("Gyro Std," + String(gyroStd));
           myFlightData.close();
+          Wire.beginTransmission(0x08); // Transmit to device with address 8 for RBPI
         }
       }
     }
@@ -211,6 +222,38 @@ void loop() {
       tone(6, 1000); // Send 1KHz sound signal...
       delay(1000);        // ...for 1 sec
       noTone(6);     // Stop sound...
+
+      while (Wire.available() && settled && !sentToRbpi) { // Has not indicated that the rocket is settled
+        Wire.write(1);  // Let rbpi know that the rocket has landed
+        delay(1000);
+        sentToRbpi = true;  // It is sent to the rbpi
+      }
+      while (Wire.available() && sentToRbpi) { // Has not received tasks from rbpi
+        char c = Wire.read(); // read the task
+        tasks[tasksIndex] = c;  //Store the commands in array
+        tasksIndex++;  //Increment the tasksIndex
+        if (c == '6') { //If it is the end indicator, stop receiving --------Change the indicator-----------------------------------------------------------------------------
+          receivedFromRbpi = true; // It is done receiving
+        }
+      }
+      // i2c communication with camera to send tasks
+      while (Wire.available() && receivedFromRbpi && !sentSegment) {
+        Wire.beginTransmission(0x12); // transmit to device with address 12
+        Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
+        Wire.write(tasks[segmentIndex+1]);
+        Wire.endTransmission(); // stop transmitting
+        segmentIndex += 2;
+        delay(1000); // wait for 1 second
+        sentSegment = true;
+      }
+
+      while (Wire.available() && sentSegment) {
+        Wire.requestFrom(0x12, 1);
+        char c = Wire.read();
+        if (c == 'y') { //--------------- Camera received it-------------------------------------
+          sentSegment = false;  //------------ Return to the task segment -----------------
+        }
+      }
     }   
   }
   myFlightData.close();
