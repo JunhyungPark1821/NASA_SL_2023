@@ -5,6 +5,9 @@
 #include <Adafruit_BNO055.h>
 #include <math.h>
 
+//PWM Servo library-----------------------------------
+#include <PWMServo.h>
+
 //Altimeter library-------------------------------------
 #include <Adafruit_MPL3115A2.h>
 
@@ -32,6 +35,7 @@ String fileName;
 Adafruit_BNO055 BNO = Adafruit_BNO055(1, 0x28);
 bool settled = false;
 bool launched = false;
+bool orientated = false;
 /* Constants: g is gravity (m/s^2)
  *  launchForceMultiplier changes how large of a magnitude of acceleration must be felt to trigger launched (higher means more force is needed to trigger launch)
  *  margin is the percent of gravity which is +/- to g to make a range of acceptable values for whther the rocket has settled, thus should be close to 9.81 
@@ -65,13 +69,21 @@ double gyroStd;
 boolean sentToRbpi = false;
 boolean receivedFromRbpi = false;
 char tasks[100];
-char tasksTemp[11]="CDCECFCGCHC";
+char tasksTemp[5]="CDEFG";
 int tasksIndex = 0;
 
 //Establish camera i2c communication------------------------------------------------------------
-boolean sentTask = false;
+boolean sentSegment = false;
 int segmentIndex = 0;
 
+//Creating 4 orientation leg servos and the one servo for the camera deployment
+PWMServo servo1;
+PWMServo servo2;
+PWMServo servo3;
+PWMServo servo4;
+PwmServo servo5;
+
+//!@#$===============!@#!=======VOID SETUP======!@#$=============!@#$=============!@#$//
 void setup() {  
   Serial.begin(115200);
   Wire.begin();
@@ -127,7 +139,13 @@ void setup() {
     pastGyroscopes[i] = i;
     pastAltitudes[i] = i;
   }
-
+//------------------------Servo setup------------------------------
+  servo1.attach(0);  // attaches the servo on pin 0 to the servo object
+  servo2.attach(1);
+  servo3.attach(3);
+  servo4.attach(23);
+  servo5.attach(4);
+  
   //------------------------Buzzer setup------------------------------------------------------------------------------------------------
 //  pinMode(19, OUTPUT); // Set buzzer - pin 6 as an output
 //  tone(19, 1000); // Send 1KHz sound signal...
@@ -218,6 +236,16 @@ void loop() {
   }
   if(settled){
     while(1) {
+      if (!orientated):
+        servo1.write(40);
+        servo3.write(40);
+        servo2.write(40);
+        servo4.write(40);
+        delay(50);
+        servo5.write(90);
+        delay(15);
+        orientated = true;
+      else:
       //-----------------------Beeping sound----------------------------------------
 //      tone(19, 1000); // Send 1KHz sound signal...
 //      delay(1000);        // ...for 1 sec
@@ -242,11 +270,14 @@ void loop() {
       
       // i2c communication with camera to send tasks
 //      while (Wire.available() && receivedFromRbpi && !sentSegment) {
-      while (Wire.available() && !sentTask) {
-        Wire.beginTransmission(0x12); // transmit to device with address 12
-        Wire.write(tasks); //Send the task
-        Wire.endTransmission(); // stop transmitting
-        delay(1000); // wait for 1 second
+        while (Wire.available() && !sentSegment) {
+          Wire.beginTransmission(0x12); // transmit to device with address 12
+          Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
+          Wire.write(tasks[segmentIndex+1]);
+          Wire.endTransmission(); // stop transmitting
+          segmentIndex++;
+          delay(1000); // wait for 1 second
+          sentSegment = true;
 //        if (tasks[segmentIndex] != 'A' || tasks[segmentIndex] != 'B') {
 //          Wire.beginTransmission(0x12); // transmit to device with address 12
 //          Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
@@ -259,15 +290,15 @@ void loop() {
 //        else {
 //                
 //        }
-      }
+        }
 
-//      while (Wire.available() && sentSegment) {
-//        Wire.requestFrom(0x12, 1);
-//        char c = Wire.read();
-//        if (c == 'y') { //--------------- Camera received it-------------------------------------
-//          sentSegment = false;  //------------ Return to the task segment -----------------
-//        }
-//      }
+        while (Wire.available() && sentSegment) {
+          Wire.requestFrom(0x12, 1);
+          char c = Wire.read();
+          if (c == 'y') { //--------------- Camera received it-------------------------------------
+            sentSegment = false;  //------------ Return to the task segment -----------------
+          }
+        }
     }   
   }
   delay(BNO055_SAMPLERATE_DELAY_MS);
