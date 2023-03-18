@@ -65,11 +65,11 @@ double gyroStd;
 boolean sentToRbpi = false;
 boolean receivedFromRbpi = false;
 char tasks[100];
-char tasksTemp[5]="CDEFG";
+char tasksTemp[11]="CDCECFCGCHC";
 int tasksIndex = 0;
 
 //Establish camera i2c communication------------------------------------------------------------
-boolean sentSegment = false;
+boolean sentTask = false;
 int segmentIndex = 0;
 
 void setup() {  
@@ -242,14 +242,11 @@ void loop() {
       
       // i2c communication with camera to send tasks
 //      while (Wire.available() && receivedFromRbpi && !sentSegment) {
-      while (Wire.available() && !sentSegment) {
+      while (Wire.available() && !sentTask) {
         Wire.beginTransmission(0x12); // transmit to device with address 12
-        Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
-        Wire.write(tasks[segmentIndex+1]);
+        Wire.write(tasks); //Send the task
         Wire.endTransmission(); // stop transmitting
-        segmentIndex++;
         delay(1000); // wait for 1 second
-        sentSegment = true;
 //        if (tasks[segmentIndex] != 'A' || tasks[segmentIndex] != 'B') {
 //          Wire.beginTransmission(0x12); // transmit to device with address 12
 //          Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
@@ -264,13 +261,13 @@ void loop() {
 //        }
       }
 
-      while (Wire.available() && sentSegment) {
-        Wire.requestFrom(0x12, 1);
-        char c = Wire.read();
-        if (c == 'y') { //--------------- Camera received it-------------------------------------
-          sentSegment = false;  //------------ Return to the task segment -----------------
-        }
-      }
+//      while (Wire.available() && sentSegment) {
+//        Wire.requestFrom(0x12, 1);
+//        char c = Wire.read();
+//        if (c == 'y') { //--------------- Camera received it-------------------------------------
+//          sentSegment = false;  //------------ Return to the task segment -----------------
+//        }
+//      }
     }   
   }
   delay(BNO055_SAMPLERATE_DELAY_MS);

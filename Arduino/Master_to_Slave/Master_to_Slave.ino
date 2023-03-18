@@ -4,7 +4,7 @@
 
 #include <Wire.h> 
 
-String tasks = "A1B2C3D4E5F6G7H8";
+String tasks = "CDCECFCGCHC";
 
 void setup() {
   // Start the I2C Bus as Master
