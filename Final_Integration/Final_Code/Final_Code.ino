@@ -6,13 +6,13 @@
 #include <math.h>
 
 //Altimeter library-------------------------------------
-#include <SparkFunMPL3115A2.h>
+#include <Adafruit_MPL3115A2.h>
 
 //Stat library---------------------------------------
 #include "Statistic.h"
 
 //Altimeter object instance-----------------------------
-MPL3115A2 alt;
+Adafruit_MPL3115A2 alt;
 double currAlt;
 
 //SD Card configuration----------------------------------------
@@ -72,24 +72,24 @@ int tasksIndex = 0;
 boolean sentSegment = false;
 int segmentIndex = 0;
 
-void setup() {
+void setup() {  
   Serial.begin(115200);
-
-  Wire.begin();// Join i2c bus
-
+  Wire.begin();
+  
   //-------------------Initiate the configuration process-------------------------------------------------
   // Initializes altimeter
-  alt.begin();
-//  Serial.println("Altimeter started");
-  alt.setModeAltimeter(); // Measure altitude above sea level in meters
-  alt.setOversampleRate(7); // Set Oversample to the recommended 128
-  alt.enableEventFlags(); // Enable all three pressure and temp event flags
-  currAlt = alt.readAltitude();
+  if (!alt.begin()) {
+    Serial.println("alt init failed");
+    while(1);
+  }
+  alt.setSeaPressure(1013.26);
+  currAlt = alt.getAltitude();
+  Serial.println(currAlt);
 
   //----------------------SD Card initialization-----------------------------------------------------------
   // Initializes SD card reader and csv file
   if(!SD.begin(chipSelect)) {
-//    Serial.println("sd init failed");
+    Serial.println("sd init failed");
     while(1) {
     }
   }
@@ -108,13 +108,13 @@ void setup() {
     fileNum++;
   }
   delay(1000);
-//  Serial.println("Opened flight.csv");
+  Serial.println("Opened flight.csv");
   myFlightData.println("Time(ms),Magnitude of Accel,Accel(X)(m/s^2),Accel(Y)(m/s^2),Accel(Z)(m/s^2),Magnitude of Gyro,Gyro(X)(rad/s),Gyro(Y)(rad/s),Gyro(Z)(rad/s),Altitude(m)\n");
-  myFlightData.close();
+  myFlightData.flush();
 
-  //David's IMU setup ----------------------------------------------------------------------------------------------------------------------
+  //David's IMU setup ----------------------------------------------------------------------------------------------------------------------  
   if (!BNO.begin()) {
-//    Serial.println("Imu did not initiate");
+    Serial.println("Imu did not initiate");
     while (1);
   }
   delay(1000);
@@ -128,15 +128,16 @@ void setup() {
   }
 
   //------------------------Buzzer setup------------------------------------------------------------------------------------------------
-  pinMode(6, OUTPUT); // Set buzzer - pin 6 as an output
-  tone(6, 1000); // Send 1KHz sound signal...
-  delay(1000);        // ...for 1 sec
-  noTone(6);     // Stop sound...
+//  pinMode(19, OUTPUT); // Set buzzer - pin 6 as an output
+//  tone(19, 1000); // Send 1KHz sound signal...
+//  delay(1000);        // ...for 1 sec
+//  noTone(19);     // Stop sound...
+  Serial.println("Ready");
 }
  
 void loop() {
   //Altimeter reading
-  currAlt = alt.readAltitude();
+  currAlt = alt.getAltitude();
   
   //Reading accelerometer and gyroscopic data
   imu::Vector<3> acc = BNO.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
@@ -145,14 +146,11 @@ void loop() {
   //Disregarding direction of acceleration to find the total magnitude
   magnitudeAccel = sqrt(pow(acc.x(),2) + pow(acc.y(),2) + pow(acc.z(),2));
   magnitudeGyro = sqrt(pow(gyro.x(),2) + pow(gyro.y(),2) + pow(gyro.z(),2));
-
-  //SD Card Open Setup
-  byte buffer[fileName.length() + 1];
-  fileName.toCharArray(buffer, fileName.length()+1);
-  myFlightData = SD.open(buffer,FILE_WRITE);
   
-  // print frewquency relative to void loop delay
+  // print frequency relative to void loop delay
   myFlightData.println(String(millis()) + "," + String(magnitudeAccel) + "," + String(acc.x()) + "," + String(acc.y()) + "," + String(acc.z()) + "," + String(magnitudeGyro) + "," + String(gyro.x()) + "," + String(gyro.y()) + "," + String(gyro.z())+","+String(currAlt));
+  Serial.println(String(magnitudeAccel));
+  myFlightData.flush();
 
   /* To keep the data in sequencial order and to standardize a process of recording
    * Each value in the array will be shifted to the left and the new value added on to the last index
@@ -193,6 +191,7 @@ void loop() {
       gyroStd = gyroStat.pop_stdev();
 
       myFlightData.println("Accel Std," + String(accelStd) + ",Gyro Std," + String(gyroStd));
+      myFlightData.flush();
       
       accelStat.clear(true);
       gyroStat.clear(true);
@@ -219,25 +218,30 @@ void loop() {
   if(settled){
     while(1) {
       //-----------------------Beeping sound----------------------------------------
-      tone(6, 1000); // Send 1KHz sound signal...
-      delay(1000);        // ...for 1 sec
-      noTone(6);     // Stop sound...
+//      tone(19, 1000); // Send 1KHz sound signal...
+//      delay(1000);        // ...for 1 sec
+//      noTone(19);     // Stop sound...
 
-      while (Wire.available() && settled && !sentToRbpi) { // Has not indicated that the rocket is settled
-        Wire.write(1);  // Let rbpi know that the rocket has landed
-        delay(1000);
-        sentToRbpi = true;  // It is sent to the rbpi
-      }
-      while (Wire.available() && sentToRbpi) { // Has not received tasks from rbpi
-        char c = Wire.read(); // read the task
-        tasks[tasksIndex] = c;  //Store the commands in array
-        tasksIndex++;  //Increment the tasksIndex
-        if (c == '6') { //If it is the end indicator, stop receiving --------Change the indicator-----------------------------------------------------------------------------
-          receivedFromRbpi = true; // It is done receiving
-        }
-      }
+      // Indicate to the aprs that the rocket has landed
+//      while (Wire.available() && settled && !sentToRbpi) { // Has not indicated that the rocket is settled
+//        Wire.write(1);  // Let rbpi know that the rocket has landed
+//        delay(1000);
+//        sentToRbpi = true;  // It is sent to the rbpi
+//      }
+//
+//      // Receive tasks from aprs
+//      while (Wire.available() && sentToRbpi) { // Has not received tasks from rbpi
+//        char c = Wire.read(); // read the task
+//        tasks[tasksIndex] = c;  //Store the commands in array
+//        tasksIndex++;  //Increment the tasksIndex
+//        if (c == '6') { //If it is the end indicator, stop receiving --------Change the indicator-----------------------------------------------------------------------------
+//          receivedFromRbpi = true; // It is done receiving
+//        }
+//      }
+      
       // i2c communication with camera to send tasks
-      while (Wire.available() && receivedFromRbpi && !sentSegment) {
+//      while (Wire.available() && receivedFromRbpi && !sentSegment) {
+      while (Wire.available() && !sentSegment) {
         Wire.beginTransmission(0x12); // transmit to device with address 12
         Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
         Wire.write(tasks[segmentIndex+1]);
@@ -256,6 +260,5 @@ void loop() {
       }
     }   
   }
-  myFlightData.close();
   delay(BNO055_SAMPLERATE_DELAY_MS);
 }
