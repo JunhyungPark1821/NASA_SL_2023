@@ -5,6 +5,7 @@ String incomingData;
 void setup() {
   Serial.begin(9600);
   Wire.begin(8); // join i2c bus with address 8
+  Serial.println("Est");
 }
 
 void loop() {

@@ -61,11 +61,11 @@ Statistic gyroStat;
 double accelStd;
 double gyroStd;
 
-
 //Establish RBPI i2c communication---------------------------------------------------------------------------------------------------
 boolean sentToRbpi = false;
 boolean receivedFromRbpi = false;
 char tasks[100];
+char tasksTemp[5]="CDEFG";
 int tasksIndex = 0;
 
 //Establish camera i2c communication------------------------------------------------------------
@@ -78,9 +78,10 @@ void setup() {
   
   //-------------------Initiate the configuration process-------------------------------------------------
   // Initializes altimeter
-  if (!alt.begin()) {
+  while (!alt.begin()) {
+    Wire.begin();
+    alt.begin();
     Serial.println("alt init failed");
-    while(1);
   }
   alt.setSeaPressure(1013.26);
   currAlt = alt.getAltitude();
@@ -246,9 +247,21 @@ void loop() {
         Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
         Wire.write(tasks[segmentIndex+1]);
         Wire.endTransmission(); // stop transmitting
-        segmentIndex += 2;
+        segmentIndex++;
         delay(1000); // wait for 1 second
         sentSegment = true;
+//        if (tasks[segmentIndex] != 'A' || tasks[segmentIndex] != 'B') {
+//          Wire.beginTransmission(0x12); // transmit to device with address 12
+//          Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
+//          Wire.write(tasks[segmentIndex+1]);
+//          Wire.endTransmission(); // stop transmitting
+//          segmentIndex++;
+//          delay(1000); // wait for 1 second
+//          sentSegment = true;
+//        }
+//        else {
+//                
+//        }
       }
 
       while (Wire.available() && sentSegment) {
