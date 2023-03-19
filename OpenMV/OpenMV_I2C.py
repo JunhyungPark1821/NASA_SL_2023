@@ -32,7 +32,7 @@ print("Waiting for Teensy...")
 # Arduino starts to poll the OpenMV Cam for data. Otherwise the I2C byte framing gets messed up,
 # and etc. So, keep the Arduino in reset until the OpenMV Cam is "Waiting for Arduino...".
 
-data = bytearray(16)  # create a buffer
+data = bytearray(11)  # create a buffer
 
 while(True):
     try:

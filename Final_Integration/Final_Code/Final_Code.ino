@@ -5,6 +5,9 @@
 #include <Adafruit_BNO055.h>
 #include <math.h>
 
+//PWM Servo library-----------------------------------
+#include <PWMServo.h>
+
 //Altimeter library-------------------------------------
 #include <Adafruit_MPL3115A2.h>
 
@@ -32,6 +35,7 @@ String fileName;
 Adafruit_BNO055 BNO = Adafruit_BNO055(1, 0x28);
 bool settled = false;
 bool launched = false;
+bool orientated = false;
 /* Constants: g is gravity (m/s^2)
  *  launchForceMultiplier changes how large of a magnitude of acceleration must be felt to trigger launched (higher means more force is needed to trigger launch)
  *  margin is the percent of gravity which is +/- to g to make a range of acceptable values for whther the rocket has settled, thus should be close to 9.81 
@@ -41,7 +45,7 @@ bool launched = false;
  *  recordedTime will be initialized to record a certain time which will be used to  see whether a certain amount of time has passed.
 */
 float g = 9.81;
-float launchForceMultiplier = 5;
+float launchForceMultiplier = 2;  // ------------------------------------------------------------------------------
 const int valuesRecorded = 5;
 double pastAccelerations[valuesRecorded];
 double pastGyroscopes[valuesRecorded];
@@ -72,20 +76,27 @@ int tasksIndex = 0;
 boolean sentTask = false;
 int segmentIndex = 0;
 
+//Creating 4 orientation leg servos and the one servo for the camera deployment
+PWMServo servo1;
+PWMServo servo2;
+PWMServo servo3;
+PWMServo servo4;
+PWMServo servo5;
+
+//!@#$===============!@#!=======VOID SETUP======!@#$=============!@#$=============!@#$//
 void setup() {  
   Serial.begin(115200);
   Wire.begin();
-  
   //-------------------Initiate the configuration process-------------------------------------------------
   // Initializes altimeter
+  alt.begin();
   while (!alt.begin()) {
-    Wire.begin();
-    alt.begin();
     Serial.println("alt init failed");
+    while (1) {
+    }
   }
   alt.setSeaPressure(1013.26);
   currAlt = alt.getAltitude();
-  Serial.println(currAlt);
 
   //----------------------SD Card initialization-----------------------------------------------------------
   // Initializes SD card reader and csv file
@@ -128,6 +139,19 @@ void setup() {
     pastAltitudes[i] = i;
   }
 
+  //------------------------Servo setup------------------------------
+//  servo1.attach(0);  // attaches the servo on pin 0 to the servo object
+//  servo2.attach(1);
+ // servo3.attach(3);
+ // servo4.attach(23);
+ // servo5.attach(4);
+ // servo1.write(150);
+ // servo3.write(150);
+ // servo2.write(130);
+ // servo4.write(90);
+ // delay(50);
+  //servo5.write(90);
+  //delay(15);
   //------------------------Buzzer setup------------------------------------------------------------------------------------------------
 //  pinMode(19, OUTPUT); // Set buzzer - pin 6 as an output
 //  tone(19, 1000); // Send 1KHz sound signal...
@@ -150,7 +174,6 @@ void loop() {
   
   // print frequency relative to void loop delay
   myFlightData.println(String(millis()) + "," + String(magnitudeAccel) + "," + String(acc.x()) + "," + String(acc.y()) + "," + String(acc.z()) + "," + String(magnitudeGyro) + "," + String(gyro.x()) + "," + String(gyro.y()) + "," + String(gyro.z())+","+String(currAlt));
-  Serial.println(String(magnitudeAccel));
   myFlightData.flush();
 
   /* To keep the data in sequencial order and to standardize a process of recording
@@ -164,6 +187,7 @@ void loop() {
   }
 
   if(launched){
+    Serial.println("Launched");
     if(millis()-recordedTime >= accelLandingDelay){
       /* Similar to the loop used for the altimeter data: standardize process of recording
        * Each value in array shifted to the left and new value added on to the last index
@@ -211,13 +235,29 @@ void loop() {
           myFlightData.println("Accel Std," + String(accelStd));
           myFlightData.println("Gyro Std," + String(gyroStd));
           myFlightData.close();
-          Wire.beginTransmission(0x08); // Transmit to device with address 8 for RBPI
+//         Wire.beginTransmission(0x08); // Transmit to device with address 8 for RBPI
         }
       }
     }
   }
   if(settled){
     while(1) {
+      if(not orientated){
+          servo1.attach(0);  // attaches the servo on pin 0 to the servo object
+        servo2.attach(1);
+        servo3.attach(3);
+        servo4.attach(23);
+        servo5.attach(4);
+        servo1.write(65);
+        servo3.write(65);
+        servo2.write(40);
+        servo4.write(65);
+        delay(50);
+        //servo5.write(90);
+        delay(15);
+        orientated = true;
+      }
+      else{
       //-----------------------Beeping sound----------------------------------------
 //      tone(19, 1000); // Send 1KHz sound signal...
 //      delay(1000);        // ...for 1 sec
@@ -242,32 +282,33 @@ void loop() {
       
       // i2c communication with camera to send tasks
 //      while (Wire.available() && receivedFromRbpi && !sentSegment) {
-      while (Wire.available() && !sentTask) {
-        Wire.beginTransmission(0x12); // transmit to device with address 12
-        Wire.write(tasks); //Send the task
-        Wire.endTransmission(); // stop transmitting
-        delay(1000); // wait for 1 second
-//        if (tasks[segmentIndex] != 'A' || tasks[segmentIndex] != 'B') {
-//          Wire.beginTransmission(0x12); // transmit to device with address 12
-//          Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
-//          Wire.write(tasks[segmentIndex+1]);
-//          Wire.endTransmission(); // stop transmitting
-//          segmentIndex++;
-//          delay(1000); // wait for 1 second
-//          sentSegment = true;
-//        }
-//        else {
-//                
-//        }
+        while (Wire.available() && !sentTask) {
+          Wire.beginTransmission(0x12); // transmit to device with address 12
+          Wire.write(tasks); //Send the task
+          Wire.endTransmission(); // stop transmitting
+          delay(1000); // wait for 1 second
+  //        if (tasks[segmentIndex] != 'A' || tasks[segmentIndex] != 'B') {
+  //          Wire.beginTransmission(0x12); // transmit to device with address 12
+  //          Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
+  //          Wire.write(tasks[segmentIndex+1]);
+  //          Wire.endTransmission(); // stop transmitting
+  //          segmentIndex++;
+  //          delay(1000); // wait for 1 second
+  //          sentSegment = true;
+  //        }
+  //        else {
+  //                
+  //        }
+        }
+  
+  //      while (Wire.available() && sentSegment) {
+  //        Wire.requestFrom(0x12, 1);
+  //        char c = Wire.read();
+  //        if (c == 'y') { //--------------- Camera received it-------------------------------------
+  //          sentSegment = false;  //------------ Return to the task segment -----------------
+  //        }
+  //      }
       }
-
-//      while (Wire.available() && sentSegment) {
-//        Wire.requestFrom(0x12, 1);
-//        char c = Wire.read();
-//        if (c == 'y') { //--------------- Camera received it-------------------------------------
-//          sentSegment = false;  //------------ Return to the task segment -----------------
-//        }
-//      }
     }   
   }
   delay(BNO055_SAMPLERATE_DELAY_MS);

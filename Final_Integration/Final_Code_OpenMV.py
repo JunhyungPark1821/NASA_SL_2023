@@ -35,7 +35,7 @@ print("Waiting for Teensy...")
 data = bytearray(11)  # create a buffer
 
 previousTask = False
-done = True
+done = False
 
 #Clock Timer
 clock = time.clock()
