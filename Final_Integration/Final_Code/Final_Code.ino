@@ -69,11 +69,11 @@ double gyroStd;
 boolean sentToRbpi = false;
 boolean receivedFromRbpi = false;
 char tasks[100];
-char tasksTemp[11]="CDCECFCGCHC";
+char tasksTemp[5]="CDEFG";
 int tasksIndex = 0;
 
 //Establish camera i2c communication------------------------------------------------------------
-boolean sentTask = false;
+boolean sentSegment = false;
 int segmentIndex = 0;
 
 //Creating 4 orientation leg servos and the one servo for the camera deployment
@@ -138,20 +138,13 @@ void setup() {
     pastGyroscopes[i] = i;
     pastAltitudes[i] = i;
   }
-
-  //------------------------Servo setup------------------------------
-//  servo1.attach(0);  // attaches the servo on pin 0 to the servo object
-//  servo2.attach(1);
- // servo3.attach(3);
- // servo4.attach(23);
- // servo5.attach(4);
- // servo1.write(150);
- // servo3.write(150);
- // servo2.write(130);
- // servo4.write(90);
- // delay(50);
-  //servo5.write(90);
-  //delay(15);
+//------------------------Servo setup------------------------------
+  servo1.attach(0);  // attaches the servo on pin 0 to the servo object
+  servo2.attach(1);
+  servo3.attach(3);
+  servo4.attach(23);
+  servo5.attach(4);
+  
   //------------------------Buzzer setup------------------------------------------------------------------------------------------------
 //  pinMode(19, OUTPUT); // Set buzzer - pin 6 as an output
 //  tone(19, 1000); // Send 1KHz sound signal...
@@ -242,22 +235,16 @@ void loop() {
   }
   if(settled){
     while(1) {
-      if(not orientated){
-          servo1.attach(0);  // attaches the servo on pin 0 to the servo object
-        servo2.attach(1);
-        servo3.attach(3);
-        servo4.attach(23);
-        servo5.attach(4);
-        servo1.write(65);
-        servo3.write(65);
+      if (!orientated):
+        servo1.write(40);
+        servo3.write(40);
         servo2.write(40);
-        servo4.write(65);
+        servo4.write(40);
         delay(50);
-        //servo5.write(90);
+        servo5.write(90);
         delay(15);
         orientated = true;
-      }
-      else{
+      else:
       //-----------------------Beeping sound----------------------------------------
 //      tone(19, 1000); // Send 1KHz sound signal...
 //      delay(1000);        // ...for 1 sec
