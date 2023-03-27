@@ -45,7 +45,7 @@ bool orientated = false;
  *  recordedTime will be initialized to record a certain time which will be used to  see whether a certain amount of time has passed.
 */
 float g = 9.81;
-float launchForceMultiplier = 2;  // ------------------------------------------------------------------------------
+float launchForceMultiplier = 1;  // ------------------------------------------------------------------------------
 const int valuesRecorded = 5;
 double pastAccelerations[valuesRecorded];
 double pastGyroscopes[valuesRecorded];
@@ -146,10 +146,16 @@ void setup() {
   servo5.attach(4);
   
   //------------------------Buzzer setup------------------------------------------------------------------------------------------------
-//  pinMode(19, OUTPUT); // Set buzzer - pin 6 as an output
-//  tone(19, 1000); // Send 1KHz sound signal...
-//  delay(1000);        // ...for 1 sec
-//  noTone(19);     // Stop sound...
+  pinMode(33, OUTPUT); // Set buzzer - pin 6 as an output
+  tone(33, 1000); // Send 1KHz sound signal...
+  delay(1000);        // ...for 1 sec
+  noTone(33);     // Stop sound...
+  tone(33, 1000); // Send 1KHz sound signal...
+  delay(1000);        // ...for 1 sec
+  noTone(33);     // Stop sound...
+  tone(33, 1000); // Send 1KHz sound signal...
+  delay(1000);        // ...for 1 sec
+  noTone(33);     // Stop sound...
   Serial.println("Ready");
 }
  
@@ -176,11 +182,11 @@ void loop() {
   if (((magnitudeAccel >= (g*launchForceMultiplier)) || ((pastAltitudes[valuesRecorded-1]-pastAltitudes[0]) > 25)) && !launched) {
     myFlightData.println("Launched");
     launchTime = millis();
+    Serial.println("Launched");
     launched = true;
   }
 
-  if(launched){
-    Serial.println("Launched");
+  if(launched) {
     if(millis()-recordedTime >= accelLandingDelay){
       /* Similar to the loop used for the altimeter data: standardize process of recording
        * Each value in array shifted to the left and new value added on to the last index
@@ -215,27 +221,30 @@ void loop() {
       gyroStat.clear(true);
       
       recordedTime = millis();
+      
     // To test whether we have actually settled on the ground we run through all the recorded data
     // Nested if statement logic same as &&
       for (int i = 0; i < valuesRecorded-1; i++){
-        if(abs(pastAltitudes[i]-pastAltitudes[i+1]) > altMargin || accelStd > accelMargin || gyroStd > gyroMargin || millis()-launchTime < 600000) {
-          settled=false;
-          break;
-        }
-        else {
+        if(abs(pastAltitudes[i]-pastAltitudes[i+1]) <= altMargin || accelStd <= accelMargin || gyroStd <= gyroMargin || millis()-launchTime > 600000) {
+          Serial.println("Settled");
           settled=true;
           myFlightData.println("Landed determined time:" + String(millis()));
           myFlightData.println("Accel Std," + String(accelStd));
           myFlightData.println("Gyro Std," + String(gyroStd));
           myFlightData.close();
+        }
+        else {
+          settled=false;
+          break;
 //         Wire.beginTransmission(0x08); // Transmit to device with address 8 for RBPI
         }
       }
     }
   }
+  
   if(settled){
     while(1) {
-      if (!orientated):
+      if (!orientated) {
         servo1.write(40);
         servo3.write(40);
         servo2.write(40);
@@ -244,7 +253,8 @@ void loop() {
         servo5.write(90);
         delay(15);
         orientated = true;
-      else:
+      }
+      else {
       //-----------------------Beeping sound----------------------------------------
 //      tone(19, 1000); // Send 1KHz sound signal...
 //      delay(1000);        // ...for 1 sec
@@ -269,11 +279,11 @@ void loop() {
       
       // i2c communication with camera to send tasks
 //      while (Wire.available() && receivedFromRbpi && !sentSegment) {
-        while (Wire.available() && !sentTask) {
-          Wire.beginTransmission(0x12); // transmit to device with address 12
-          Wire.write(tasks); //Send the task
-          Wire.endTransmission(); // stop transmitting
-          delay(1000); // wait for 1 second
+//        while (Wire.available() && !sentTask) {
+//          Wire.beginTransmission(0x12); // transmit to device with address 12
+//          Wire.write(tasks); //Send the task
+//          Wire.endTransmission(); // stop transmitting
+//          delay(1000); // wait for 1 second
   //        if (tasks[segmentIndex] != 'A' || tasks[segmentIndex] != 'B') {
   //          Wire.beginTransmission(0x12); // transmit to device with address 12
   //          Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
@@ -285,9 +295,7 @@ void loop() {
   //        }
   //        else {
   //                
-  //        }
-        }
-  
+  //        }  
   //      while (Wire.available() && sentSegment) {
   //        Wire.requestFrom(0x12, 1);
   //        char c = Wire.read();
@@ -295,8 +303,8 @@ void loop() {
   //          sentSegment = false;  //------------ Return to the task segment -----------------
   //        }
   //      }
-      }
-    }   
-  }
+      }  
+    }
+  }   
   delay(BNO055_SAMPLERATE_DELAY_MS);
 }
