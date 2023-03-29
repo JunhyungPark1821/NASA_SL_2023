@@ -45,7 +45,7 @@ bool orientated = false;
  *  recordedTime will be initialized to record a certain time which will be used to  see whether a certain amount of time has passed.
 */
 float g = 9.81;
-float launchForceMultiplier = 1;  // ------------------------------------------------------------------------------
+float launchForceMultiplier = 5;  // !!!!!!!!!!!!!!!!!!!!!!!!---------------------CHANGE AFTER TESTING------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 const int valuesRecorded = 5;
 double pastAccelerations[valuesRecorded];
 double pastGyroscopes[valuesRecorded];
@@ -68,8 +68,7 @@ double gyroStd;
 //Establish RBPI i2c communication---------------------------------------------------------------------------------------------------
 boolean sentToRbpi = false;
 boolean receivedFromRbpi = false;
-char tasks[100];
-char tasksTemp[5]="CDEFG";
+String tasksTemp = "CDCECFCGCH";
 int tasksIndex = 0;
 
 //Establish camera i2c communication------------------------------------------------------------
@@ -82,6 +81,8 @@ PWMServo servo2;
 PWMServo servo3;
 PWMServo servo4;
 PWMServo servo5;
+
+#define LED_PIN 33
 
 //!@#$===============!@#!=======VOID SETUP======!@#$=============!@#$=============!@#$//
 void setup() {  
@@ -141,21 +142,24 @@ void setup() {
 //------------------------Servo setup------------------------------
   servo1.attach(0);  // attaches the servo on pin 0 to the servo object
   servo2.attach(1);
-  servo3.attach(3);
-  servo4.attach(23);
+  servo3.attach(23);
+  servo4.attach(22);
   servo5.attach(4);
   
   //------------------------Buzzer setup------------------------------------------------------------------------------------------------
-  pinMode(33, OUTPUT); // Set buzzer - pin 6 as an output
-  tone(33, 1000); // Send 1KHz sound signal...
-  delay(1000);        // ...for 1 sec
-  noTone(33);     // Stop sound...
-  tone(33, 1000); // Send 1KHz sound signal...
-  delay(1000);        // ...for 1 sec
-  noTone(33);     // Stop sound...
-  tone(33, 1000); // Send 1KHz sound signal...
-  delay(1000);        // ...for 1 sec
-  noTone(33);     // Stop sound...
+  pinMode(LED_PIN, OUTPUT); // Set buzzer - pin 6 as an output
+  digitalWrite(LED_PIN, HIGH);
+  delay(1000);
+  digitalWrite(LED_PIN, LOW);
+  delay(1000);
+  digitalWrite(LED_PIN, HIGH);
+  delay(1000);
+  digitalWrite(LED_PIN, LOW);
+  delay(1000);
+  digitalWrite(LED_PIN, HIGH);
+  delay(1000);
+  digitalWrite(LED_PIN, LOW);
+  delay(1000);
   Serial.println("Ready");
 }
  
@@ -184,9 +188,13 @@ void loop() {
     launchTime = millis();
     Serial.println("Launched");
     launched = true;
+    digitalWrite(LED_PIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_PIN, LOW);
+    delay(1000);
   }
 
-  if(launched) {
+  if(launched && !settled) {
     if(millis()-recordedTime >= accelLandingDelay){
       /* Similar to the loop used for the altimeter data: standardize process of recording
        * Each value in array shifted to the left and new value added on to the last index
@@ -236,74 +244,30 @@ void loop() {
         else {
           settled=false;
           break;
-//         Wire.beginTransmission(0x08); // Transmit to device with address 8 for RBPI
         }
       }
     }
   }
   
   if(settled){
-    while(1) {
-      if (!orientated) {
-        servo1.write(40);
-        servo3.write(40);
-        servo2.write(40);
-        servo4.write(40);
-        delay(50);
-        servo5.write(90);
-        delay(15);
-        orientated = true;
-      }
-      else {
-      //-----------------------Beeping sound----------------------------------------
-//      tone(19, 1000); // Send 1KHz sound signal...
-//      delay(1000);        // ...for 1 sec
-//      noTone(19);     // Stop sound...
-
-      // Indicate to the aprs that the rocket has landed
-//      while (Wire.available() && settled && !sentToRbpi) { // Has not indicated that the rocket is settled
-//        Wire.write(1);  // Let rbpi know that the rocket has landed
-//        delay(1000);
-//        sentToRbpi = true;  // It is sent to the rbpi
-//      }
-//
-//      // Receive tasks from aprs
-//      while (Wire.available() && sentToRbpi) { // Has not received tasks from rbpi
-//        char c = Wire.read(); // read the task
-//        tasks[tasksIndex] = c;  //Store the commands in array
-//        tasksIndex++;  //Increment the tasksIndex
-//        if (c == '6') { //If it is the end indicator, stop receiving --------Change the indicator-----------------------------------------------------------------------------
-//          receivedFromRbpi = true; // It is done receiving
-//        }
-//      }
-      
-      // i2c communication with camera to send tasks
-//      while (Wire.available() && receivedFromRbpi && !sentSegment) {
-//        while (Wire.available() && !sentTask) {
-//          Wire.beginTransmission(0x12); // transmit to device with address 12
-//          Wire.write(tasks); //Send the task
-//          Wire.endTransmission(); // stop transmitting
-//          delay(1000); // wait for 1 second
-  //        if (tasks[segmentIndex] != 'A' || tasks[segmentIndex] != 'B') {
-  //          Wire.beginTransmission(0x12); // transmit to device with address 12
-  //          Wire.write(tasks[segmentIndex]); //Send a segment of task at a time
-  //          Wire.write(tasks[segmentIndex+1]);
-  //          Wire.endTransmission(); // stop transmitting
-  //          segmentIndex++;
-  //          delay(1000); // wait for 1 second
-  //          sentSegment = true;
-  //        }
-  //        else {
-  //                
-  //        }  
-  //      while (Wire.available() && sentSegment) {
-  //        Wire.requestFrom(0x12, 1);
-  //        char c = Wire.read();
-  //        if (c == 'y') { //--------------- Camera received it-------------------------------------
-  //          sentSegment = false;  //------------ Return to the task segment -----------------
-  //        }
-  //      }
-      }  
+    digitalWrite(LED_PIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_PIN, LOW);
+    delay(1000);
+    digitalWrite(LED_PIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_PIN, LOW);
+    delay(1000);
+    digitalWrite(LED_PIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_PIN, LOW);
+    delay(1000);
+    while (!sentSegment) {
+      Wire.beginTransmission(0x12); // transmit to device with address 12
+      Wire.write(tasksTemp.c_str()); //Send the task
+      Wire.endTransmission(); // stop transmitting
+      delay(1000); // wait for 1 second
+      Serial.println("Task sent");
     }
   }   
   delay(BNO055_SAMPLERATE_DELAY_MS);

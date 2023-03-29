@@ -8,6 +8,9 @@
 
 import pyb, ustruct, sensor, image, time, machine, pyb
 
+# Indicator
+BLUE_LED_PIN = 3
+
 # Use "ustruct" to build data packets to send.
 # "<" puts the data in the struct in little endian order.
 # "%ds" puts a string in the data stream. E.g. "13s" for "Hello World!\n" (13 chars).
@@ -32,9 +35,9 @@ print("Waiting for Teensy...")
 # Arduino starts to poll the OpenMV Cam for data. Otherwise the I2C byte framing gets messed up,
 # and etc. So, keep the Arduino in reset until the OpenMV Cam is "Waiting for Arduino...".
 
-data = bytearray(11)  # create a buffer
+data = bytearray(10)  # create a buffer
 
-previousTask = False
+previousTask = True
 done = False
 
 #Clock Timer
@@ -55,9 +58,13 @@ img = sensor.snapshot()
 
 while(not done):
     try:
-        bus.recv(data, timeout=10000)       # receive 20 bytes, writing them into data
+        bus.recv(data, timeout=10000)
         fullTask = data.decode("utf-8")
         print(fullTask)
+        pyb.LED(BLUE_LED_PIN).on()
+        sensor.skip_frames(time = 1000) # Give the user time to get ready.
+        pyb.LED(BLUE_LED_PIN).off()
+
 
         for task in fullTask:
             if task == 'C':
@@ -76,11 +83,11 @@ while(not done):
                     timeseconds = round(pyb.elapsed_millis(start)/1000)
                     timeminutes = round(pyb.elapsed_millis(start)/60000)
                     img.draw_string(0,0, "Time Since Launch: " + str(timeminutes) + " Minutes " + str(timeseconds) + " Seconds ", 986)
-                    img.save("Jun"+str(numImg)+".jpg") #Save to SD Card
+                    img.save("test"+str(numImg)+".jpg") #Save to SD Card
                     print("Save")
             if task == 'D':
                 previousTask = True
-                sensor.set_pixformat(sensor.GRAYSCALE) #Color image (RGB)
+                sensor.set_pixformat(sensor.GRAYSCALE) #Grayscale image
                 sensor.skip_frames(time = 1000)
             if task == 'E':
                 previousTask = True
@@ -88,21 +95,30 @@ while(not done):
                 sensor.skip_frames(time = 1000)
             if task == 'F':
                 img = img.replace(vflip=1,hmirror=1) #Rotate image 180
-                img.save("Jun"+str(numImg)+".jpg") #Save to SD Card
+                img.save("test"+str(numImg)+".jpg") #Save to SD Card
                 print("Save")
                 sensor.skip_frames(time = 1000)
             if task == 'G':
                 originalImg = img.copy()
                 img = img.to_bitmap() # Apply filter
-                img.save("Jun"+str(numImg)+".jpg") #Save to SD Card
+                img.save("test"+str(numImg)+".jpg") #Save to SD Card
                 print("Save")
                 sensor.skip_frames(time = 1000)
             if task == 'H':
                 img = originalImg
-                img.save("Jun"+str(numImg)+".jpg") #Save to SD Card
+                img.save("test"+str(numImg)+".jpg") #Save to SD Card
                 print("Save")
                 sensor.skip_frames(time = 1000)
         print("Done")
+        pyb.LED(BLUE_LED_PIN).on()
+        sensor.skip_frames(time = 1000) # Give the user time to get ready.
+        pyb.LED(BLUE_LED_PIN).off()
+        pyb.LED(BLUE_LED_PIN).on()
+        sensor.skip_frames(time = 1000) # Give the user time to get ready.
+        pyb.LED(BLUE_LED_PIN).off()
+        pyb.LED(BLUE_LED_PIN).on()
+        sensor.skip_frames(time = 1000) # Give the user time to get ready.
+        pyb.LED(BLUE_LED_PIN).off()
         done = True
 
     except OSError as err:
